@@ -1,0 +1,15 @@
+[package]
+name = "lib"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+sha2 = "0.10"
+aes-gcm = "0.10.2"
+pbkdf2 = { version = "0.12", features = ["hmac"] }
+hex = "0.4"
+hmac = "0.12"
+rand = "0.8.5"
