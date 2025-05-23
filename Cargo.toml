@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "wanna-rust",
+    "wanna-splitter",
+    "shared"
+]
+resolver = "3"
