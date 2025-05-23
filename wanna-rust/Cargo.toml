@@ -1,0 +1,20 @@
+[package]
+name = "wanna-rust"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+strip = "symbols"
+lto = true
+opt-level = "z"
+
+[dependencies]
+lib = { path = "../shared" }
+serde = { version = "1.0", features = ["derive"] }
+windows = { version = "0.52.0", features = ["Win32_System_Com", "Win32_Media_Speech"] }
+wmi = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+rfd = "0.14"
+dirs = "5.0"
+rand = "0.8.5"
