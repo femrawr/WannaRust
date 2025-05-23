@@ -1,0 +1,8 @@
+#  [build]
+#  rustflags = [
+#      "-C", "link-args=/SUBSYSTEM:WINDOWS",
+#  
+#      "-C", "opt-level=z",
+#      "-C", "lto=yes",
+#      "-C", "strip=symbols",
+#  ]
