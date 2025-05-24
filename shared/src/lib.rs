@@ -1,8 +1,15 @@
 pub mod config;
 pub mod crypto;
 
-use rand::{Rng, thread_rng};
-use rand::distributions::{Alphanumeric, Distribution};
+use base64::{
+    Engine,
+    engine::general_purpose
+};
+
+use rand::{
+    Rng, thread_rng,
+    distributions::{Alphanumeric, Distribution}
+};
 
 const SPECIAL: [char; 42] = [
     'ʬ', 'ᚖ', 'Ӕ', 'ʮ', '⚆', 'ᘎ', 'ჴ',
@@ -20,7 +27,7 @@ pub fn test_entry(name: &str) {
 pub fn gen_string(len: usize) -> String {
     let mut rng = thread_rng();
 
-    let string = (0..len)
+    let string: String = (0..len)
         .map(|_| {
             if rng.gen_ratio(1, 2) {
                 SPECIAL[rng.gen_range(0..SPECIAL.len())]
@@ -30,5 +37,5 @@ pub fn gen_string(len: usize) -> String {
         })
         .collect();
 
-    string
+    general_purpose::STANDARD.encode(string.as_bytes())
 }

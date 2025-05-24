@@ -8,19 +8,23 @@ use hmac::Hmac;
 
 #[derive(Debug)]
 pub enum CryptoError {
+    InvalidLength,
     EncryptionError,
+    UnexpectedLength,
+    UnexpectedNonce,
     DecryptionError,
-
     InvalidHex,
     InvalidUTF8,
-
-    KeyGenFailed,
+    KeyGenFailed
 }
 
 impl fmt::Display for CryptoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            CryptoError::InvalidLength => write!(f, "Invalid nonce length"),
             CryptoError::EncryptionError => write!(f, "Encryption failed"),
+            CryptoError::UnexpectedLength => write!(f, "Unexpected encrypted data length"),
+            CryptoError::UnexpectedNonce => write!(f, "Unexpected nonce"),
             CryptoError::DecryptionError => write!(f, "Decryption failed"),
             CryptoError::InvalidHex => write!(f, "Invalid hex in encrypted data"),
             CryptoError::InvalidUTF8 => write!(f, "Invalid UTF8 in decrypted data"),
@@ -32,11 +36,11 @@ impl fmt::Display for CryptoError {
 impl Error for CryptoError {}
 
 pub fn encrypt(data: &str, key: &str, static_nonce: bool) -> Result<String, CryptoError> {
-    let salt= gen_salt(0, 0, 0, 0);
+    let salt= gen_salt(234, 78632, 2, 45378);
     let main_key = gen_key(key, &salt)?;
 
     let nonce_bytes: [u8; 12] = if static_nonce {
-        gen_nonce(0, 0)
+        gen_nonce(593, 381)
     } else {
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let mut arr: [u8; 12] = [0u8; 12];
@@ -46,7 +50,7 @@ pub fn encrypt(data: &str, key: &str, static_nonce: bool) -> Result<String, Cryp
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let cipher = Aes256Gcm::new_from_slice(&main_key)
-        .map_err(|_| CryptoError::EncryptionError)?;
+        .map_err(|_| CryptoError::InvalidLength)?;
 
     let ciphered = cipher
         .encrypt(&nonce, data.as_bytes().as_ref())
@@ -59,14 +63,14 @@ pub fn encrypt(data: &str, key: &str, static_nonce: bool) -> Result<String, Cryp
 }
 
 pub fn decrypt(data: &str, key: &str, static_nonce: bool) -> Result<String, CryptoError> {
-    let salt= gen_salt(0, 0, 0, 0);
+    let salt= gen_salt(234, 78632, 2, 45378);
     let main_key = gen_key(key, &salt)?;
 
     let encrypted = hex::decode(data)
         .map_err(|_| CryptoError::InvalidHex)?;
 
     if encrypted.len() < 12 {
-        return Err(CryptoError::DecryptionError);
+        return Err(CryptoError::UnexpectedLength);
     }
 
     let (nonce_bytes, ciphered) = encrypted.split_at(12);
@@ -74,13 +78,13 @@ pub fn decrypt(data: &str, key: &str, static_nonce: bool) -> Result<String, Cryp
     if static_nonce {
         let expected: [u8; 12] = gen_nonce(593, 381);
         if nonce_bytes != expected {
-            return Err(CryptoError::DecryptionError);
+            return Err(CryptoError::UnexpectedNonce);
         }
     }
     let nonce = Nonce::from_slice(nonce_bytes);
 
     let cipher = Aes256Gcm::new_from_slice(&main_key)
-        .map_err(|_| CryptoError::DecryptionError)?;
+        .map_err(|_| CryptoError::InvalidLength)?;
 
     let decrypted = cipher
         .decrypt(nonce, ciphered)

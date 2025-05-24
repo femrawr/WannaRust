@@ -238,6 +238,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
+name = "base64"
+version = "0.21.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
 name = "bitflags"
 version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -869,6 +875,7 @@ name = "lib"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "base64",
  "hex",
  "hmac",
  "pbkdf2",
@@ -1556,6 +1563,9 @@ dependencies = [
 [[package]]
 name = "wanna-splitter"
 version = "0.1.0"
+dependencies = [
+ "lib",
+]
 
 [[package]]
 name = "wasi"
