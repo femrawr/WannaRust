@@ -67,16 +67,22 @@ pub fn hide_item(path: &Path, system: bool) -> io::Result<()> {
 }
 
 pub fn walk_dir<F>(path: &Path, callback: &F) where F: Fn(&Path), {
-    if let Ok(files) = fs::read_dir(path) {
-        for file in files.flatten() {
-            let path: PathBuf = file.path();
-            if path.is_dir() {
-                walk_dir(&path, callback);
-            } else {
-                callback(&path);
-            }
+    let Ok(files) = fs::read_dir(path) else {
+        eprintln!("failed to read dir: {}", path.display());
+        return;
+    };
+
+    for file in files {
+        let Ok(entry) = file else {
+            eprintln!("failed to read {}: {}", path.display(), file.unwrap_err());
+            continue;
+        };
+
+        let path: PathBuf = entry.path();
+        if path.is_dir() {
+            walk_dir(&path, callback);
+        } else {
+            callback(&path);
         }
-    } else {
-        eprintln!("failed to walk dir: {}", path.display());
     }
 }
