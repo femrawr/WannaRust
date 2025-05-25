@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn test_get_img_bytes() {
-        let result = get_img_bytes("C:\\Users\\choc\\Pictures\\vonwp.jpg");
+        let result = get_img_bytes("C:\\picture");
         assert!(result.is_ok());
     }
 }
