@@ -9,7 +9,10 @@ pub const DEBUG_MODE: bool = false;
 pub const DEBUG_FOLDER_NAME: &str = "wr-dbg-fld";
 
 /// bypasses the device whitelist check
-pub const DEBUG_BYPASS_WHITELIST: bool = true;
+pub const DEBUG_BYPASS_WHITELIST: bool = false;
+
+/// whether it will kill every running foreground procs
+pub const DEBUG_CAN_KILL_PROCS: bool = true;
 
 /// the name of the folder that will be created in AppData/Local
 pub const MAIN_FOLDER_NAME: &str = "WD Security Mod";
