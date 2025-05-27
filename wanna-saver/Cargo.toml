@@ -1,0 +1,10 @@
+[package]
+name = "wanna-saver"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lib = { path = "../shared" }
+iced = "0.10"
+chrono = "0.4"
+rand = "0.8"
