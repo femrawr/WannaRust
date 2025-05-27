@@ -9,3 +9,6 @@ pub const CAN_HIDE_ITEMS: bool = false;
 
 /// the crypto address in the ransome note
 pub const CRYPTO_ADDRESS: &'static str = "LZb1q9nfsRgLxG1Bz7FVJZTeXVKjHxfX2U";
+
+/// the ammount of money to send
+pub const AMOUNT_MONEY: u64 = 100;
