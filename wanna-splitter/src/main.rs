@@ -77,7 +77,7 @@ fn main() {
 
 fn handle_input(identifier: &str, master_key: &str, protected_key: &str) {
     let key: String = master_key.to_string() + identifier;
-    let actual_key = match crypto::decrypt(&protected_key, &key, true) {
+    let actual_key: String = match crypto::decrypt(&protected_key, &key, true) {
         Err(err) => {
             eprintln!("could not decrypt: {}", err);
             return;
@@ -87,4 +87,8 @@ fn handle_input(identifier: &str, master_key: &str, protected_key: &str) {
     };
 
     println!("decrypted: \"{}\"", actual_key);
+
+    io::stdout().flush().unwrap();
+    let mut key: String = String::new();
+    let _ = io::stdin().read_line(&mut key);
 }
