@@ -2,6 +2,7 @@
 members = [
     "wanna-rust",
     "wanna-splitter",
+    "wanna-saver",
     "shared"
 ]
 resolver = "3"
